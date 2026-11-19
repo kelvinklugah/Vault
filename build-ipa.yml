@@ -1,0 +1,85 @@
+name: Build IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate iOS project
+        run: npx cap add ios
+
+      - name: Install xcodeproj
+        run: sudo gem install xcodeproj --no-document
+
+      - name: Patch iOS project
+        run: |
+          set -e
+          cp native/*.swift ios/App/App/
+          ruby scripts/add_files.rb ios/App/App.xcodeproj
+
+          SB=ios/App/App/Base.lproj/Main.storyboard
+          sed -i '' 's/customClass="CAPBridgeViewController" customModule="Capacitor"/customClass="ViewController" customModule="App" customModuleProvider="target"/' "$SB"
+          grep -q 'customClass="ViewController"' "$SB" || { echo "Storyboard patch failed"; exit 1; }
+
+          PB=/usr/libexec/PlistBuddy
+          P=ios/App/App/Info.plist
+          $PB -c "Add :NSFaceIDUsageDescription string Unlock your vault with Face ID." "$P"
+          $PB -c "Add :NSPhotoLibraryUsageDescription string Choose pictures and videos to lock in your vault." "$P"
+          $PB -c "Add :NSCameraUsageDescription string Take a picture to lock in your vault." "$P"
+          $PB -c "Add :NSMicrophoneUsageDescription string Record video to lock in your vault." "$P"
+          $PB -c "Add :UIUserInterfaceStyle string Dark" "$P"
+
+          find ios/App/App/Assets.xcassets/AppIcon.appiconset -name '*.png' -exec cp scripts/icon-1024.png {} \;
+
+      - name: Sync web assets
+        run: npx cap sync ios
+
+      - name: Build unsigned app
+        run: |
+          cd ios/App
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            clean build
+
+      - name: Package IPA
+        run: |
+          cd ios/App/build/Build/Products/Release-iphoneos
+          rm -rf Payload Vault.ipa
+          mkdir Payload
+          cp -R App.app Payload/
+          zip -qry Vault.ipa Payload
+          mv Vault.ipa "$GITHUB_WORKSPACE/Vault.ipa"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Vault-ipa
+          path: Vault.ipa
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Vault build ${{ github.run_number }}
+          files: Vault.ipa

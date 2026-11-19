@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vault</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#06182b">
+<meta name="apple-mobile-web-app-title" content="Vault">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+:root{--bg:#06182b;--panel:#0b2540;--line:#15436e;--blue:#1e6fff;--green:#1fd17a;--text:#e8f3ff;--mute:#8fb0cc;--danger:#ff5a6a;--r:14px}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
+button,input{font:inherit;color:inherit}
+.hide{display:none!important}
+.center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.25rem}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:1.5rem;width:100%;max-width:380px}
+h1{font-size:22px;font-weight:600;margin-bottom:4px}
+.sub{color:var(--mute);font-size:13px;margin-bottom:1rem}
+.logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--green));display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+input.f{width:100%;background:#071e35;border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px}
+input.f:focus{outline:2px solid var(--blue);border-color:var(--blue)}
+.btn{border:0;border-radius:10px;padding:11px 16px;cursor:pointer;font-weight:500;background:var(--blue);color:#fff}
+.btn:hover{filter:brightness(1.1)}
+.btn.green{background:var(--green);color:#042515}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+.btn.danger{background:var(--danger);color:#fff}
+.btn.block{width:100%}
+.err{color:var(--danger);font-size:13px;min-height:18px;margin-bottom:6px}
+.err.ok{color:var(--green)}
+.note{color:var(--mute);font-size:12px;margin-top:12px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+header b{font-size:17px;font-weight:600}
+main{max-width:1000px;margin:0 auto;padding:18px}
+.imports{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.imp{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px dashed var(--green);border-radius:var(--r);padding:14px;cursor:pointer;text-align:left}
+.imp:hover{background:#0e2f50}
+.imp.b{border-color:var(--blue)}
+.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.tab{background:transparent;border:1px solid var(--line);border-radius:20px;padding:6px 14px;cursor:pointer;color:var(--mute)}
+.tab.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.item{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer}
+.item:hover{border-color:var(--green)}
+.th{height:100px;background:#071e35;display:flex;align-items:center;justify-content:center;color:var(--green);font-weight:600;font-size:18px;overflow:hidden}
+.th img{width:100%;height:100%;object-fit:cover}
+.nm{padding:8px 10px;font-size:12px}
+.nm div:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nm div:last-child{color:var(--mute);font-size:11px}
+.empty{text-align:center;color:var(--mute);padding:3rem 1rem;border:1px dashed var(--line);border-radius:var(--r)}
+#status{color:var(--green);font-size:13px;margin-bottom:10px;min-height:18px}
+.modal{position:fixed;inset:0;background:rgba(2,10,20,.92);z-index:20;display:flex;flex-direction:column;padding:14px}
+.mhead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.mhead span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mbody{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
+.mbody img,.mbody video{max-width:100%;max-height:100%;border-radius:10px}
+.mfoot{display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+#code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:17px;letter-spacing:.06em;text-align:center;background:#071e35;border:1px solid var(--green);border-radius:10px;padding:14px;margin-bottom:10px;word-break:break-all;user-select:all}
+</style>
+</head>
+<body>
+
+<div id="auth" class="center">
+  <div class="card">
+    <div class="logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg></div>
+    <h1 id="atitle"></h1>
+    <p class="sub" id="asub"></p>
+    <input class="f hide" type="text" id="rc" placeholder="Recovery code" autocomplete="off" autocapitalize="characters" spellcheck="false">
+    <input class="f" type="password" id="pw" placeholder="Password">
+    <input class="f hide" type="password" id="pw2" placeholder="Confirm password" autocomplete="new-password">
+    <div class="err" id="err"></div>
+    <button class="btn green block" id="go"></button>
+    <button class="btn block hide" id="bio" style="margin-top:8px">Unlock with Face ID</button>
+    <button class="btn ghost block" id="forgot" style="margin-top:8px">Forgot password?</button>
+    <button class="btn ghost block hide" id="back" style="margin-top:8px">Back to unlock</button>
+    <p class="note hide" id="warn">You'll get a recovery code next. Without your password or that code, files can't be opened. Clearing this browser's site data deletes the vault.</p>
+  </div>
+</div>
+
+<div id="rec" class="center hide">
+  <div class="card">
+    <h1>Save your recovery code</h1>
+    <p class="sub">If you forget your password, this code is the only way back in. Write it down or store it somewhere safe, away from this device.</p>
+    <div id="code"></div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn ghost" id="ccopy" style="flex:1">Copy</button>
+      <button class="btn ghost" id="cdl" style="flex:1">Download</button>
+    </div>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:8px"><input type="checkbox" id="saved" style="margin-top:3px"><span>I've saved this code somewhere safe.</span></label>
+    <div class="err" id="rerr"></div>
+    <button class="btn green block" id="rgo">Continue</button>
+    <p class="note">Anyone with this code and access to this browser can open your vault. Keep it private.</p>
+  </div>
+</div>
+
+<div id="app" class="hide">
+  <header>
+    <b>Vault</b>
+    <div style="display:flex;gap:8px;align-items:center"><span id="count" class="sub" style="margin:0"></span><button class="btn ghost" id="secbtn">Security</button><button class="btn ghost" id="lock">Lock</button></div>
+  </header>
+  <main>
+    <div class="imports">
+      <button class="imp" data-k="image"><span>Import pictures</span></button>
+      <button class="imp b" data-k="video"><span>Import videos</span></button>
+      <button class="imp" data-k="any"><span>Import any file</span></button>
+    </div>
+    <input type="file" id="fimg" accept="image/*" multiple class="hide">
+    <input type="file" id="fvid" accept="video/*" multiple class="hide">
+    <input type="file" id="fany" multiple class="hide">
+    <div id="status"></div>
+    <div class="tabs" id="tabs">
+      <button class="tab on" data-f="all">All</button>
+      <button class="tab" data-f="photo">Photos</button>
+      <button class="tab" data-f="video">Videos</button>
+      <button class="tab" data-f="file">Files</button>
+    </div>
+    <div id="list"></div>
+  </main>
+</div>
+
+<div id="modal" class="modal hide">
+  <div class="mhead"><span id="mname"></span><button class="btn ghost" id="mclose">Close</button></div>
+  <div class="mbody" id="mbody"></div>
+  <div id="mstat" class="sub" style="text-align:center;margin:8px 0 0;min-height:18px"></div>
+  <div class="mfoot"><button class="btn green" id="mdl">Download</button><button class="btn danger" id="mdel">Delete</button></div>
+</div>
+
+<div id="smodal" class="modal hide" style="align-items:center;justify-content:center">
+  <div class="card">
+    <h1>Security</h1>
+    <p class="sub">Enter your current password to make changes.</p>
+    <input class="f" type="password" id="s0" placeholder="Current password" autocomplete="current-password">
+    <input class="f" type="password" id="s1" placeholder="New password (to change it)" autocomplete="new-password">
+    <input class="f" type="password" id="s2" placeholder="Confirm new password" autocomplete="new-password">
+    <div class="err" id="serr"></div>
+    <button class="btn block" id="schg">Change password</button>
+    <button class="btn green block" id="srec" style="margin-top:8px">Generate new recovery code</button>
+    <button class="btn ghost block" id="sbio" style="margin-top:8px">Enable Face ID unlock</button>
+    <p class="note" id="bnote"></p>
+    <button class="btn ghost block" id="sclose" style="margin-top:8px">Close</button>
+    <p class="note">A new recovery code replaces the old one, which stops working.</p>
+  </div>
+</div>
+
+<script>
+const enc=new TextEncoder(),dec=new TextDecoder();
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let key=null,items=[],filter='all',urls=[],current=null,idle=null,fails=0,mode='unlock',recNext=null,recCode='',busy=false,bioOn=false,bioRec=null,bioState=0,bioPend=null;
+const MAX=50*1024*1024*1024,CHUNK=8*1024*1024,PREVIEW=300*1024*1024;
+const ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function idb(){return new Promise((res,rej)=>{const r=indexedDB.open('cart3r-vault',2);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('meta'))d.createObjectStore('meta');if(!d.objectStoreNames.contains('files'))d.createObjectStore('files',{keyPath:'id',autoIncrement:true});if(!d.objectStoreNames.contains('chunks'))d.createObjectStore('chunks',{keyPath:['fid','i']})};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+const dbp=idb();
+async function tx(store,mode,fn){const db=await dbp;return new Promise((res,rej)=>{const t=db.transaction(store,mode);const s=t.objectStore(store);const r=fn(s);t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)})}
+const getAuth=()=>tx('meta','readonly',s=>s.get('auth'));
+const putAuth=a=>tx('meta','readwrite',s=>s.put(a,'auth'));
+
+const rnd=n=>crypto.getRandomValues(new Uint8Array(n));
+async function pbk(secret){return crypto.subtle.importKey('raw',enc.encode(secret),'PBKDF2',false,['deriveKey','deriveBits'])}
+const P=salt=>({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'});
+async function kek(secret,salt){return crypto.subtle.deriveKey(P(salt),await pbk(secret),{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+async function rawBits(secret,salt){return crypto.subtle.deriveBits(P(salt),await pbk(secret),256)}
+async function seal(buf,k=key,aad){const iv=rnd(12);const p={name:'AES-GCM',iv};if(aad)p.additionalData=enc.encode(aad);const ct=await crypto.subtle.encrypt(p,k,buf);return{iv,ct}}
+async function unseal(o,k=key,aad){const p={name:'AES-GCM',iv:o.iv};if(aad)p.additionalData=enc.encode(aad);return crypto.subtle.decrypt(p,k,o.ct)}
+const newDek=()=>crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
+async function wrap(dek,k){return seal(await crypto.subtle.exportKey('raw',dek),k)}
+async function unwrap(w,k){return crypto.subtle.importKey('raw',await unseal(w,k),{name:'AES-GCM'},true,['encrypt','decrypt'])}
+const norm=c=>c.toUpperCase().replace(/[^A-Z0-9]/g,'');
+function newCode(){let s='';for(const x of rnd(24))s+=ALPHA[x&31];return s.match(/.{4}/g).join('-')}
+async function buildAuth(dek,pw,code){
+  const salt=rnd(16),rsalt=rnd(16);
+  return{v:2,salt,wrap:await wrap(dek,await kek(pw,salt)),rsalt,rwrap:await wrap(dek,await kek(norm(code),rsalt))};
+}
+
+function err(m,ok){const e=$('err');e.textContent=m||'';e.classList.toggle('ok',!!ok)}
+function serr(m,ok){const e=$('serr');e.textContent=m||'';e.classList.toggle('ok',!!ok)}
+function clearFields(){['pw','pw2','rc','s0','s1','s2'].forEach(i=>$(i).value='')}
+function setMode(m){
+  mode=m;
+  const T={setup:['Create your vault','Choose a strong password (8+ characters).','Create vault'],unlock:['Unlock vault','Enter your password.','Unlock'],forgot:['Reset password','Enter your recovery code and choose a new password.','Reset password']}[m];
+  $('atitle').textContent=T[0];$('asub').textContent=T[1];$('go').textContent=T[2];
+  $('pw2').classList.toggle('hide',m==='unlock');
+  $('rc').classList.toggle('hide',m!=='forgot');
+  $('forgot').classList.toggle('hide',m!=='unlock');
+  $('back').classList.toggle('hide',m!=='forgot');
+  $('warn').classList.toggle('hide',m!=='setup');
+  $('bio').classList.toggle('hide',m!=='unlock'||!bioOn);
+  $('pw').placeholder=m==='unlock'?'Password':'New password';
+  $('pw').autocomplete=m==='unlock'?'current-password':'new-password';
+  err('');
+}
+const NB=()=>{try{return window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()&&Capacitor.Plugins&&Capacitor.Plugins.VaultBio||null}catch(e){return null}};
+function b64(u){let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)}
+function b64d(s){return Uint8Array.from(atob(s),c=>c.charCodeAt(0))}
+const bioOK=()=>!!NB()||!!(window.PublicKeyCredential&&navigator.credentials&&(location.protocol==='https:'||location.hostname==='localhost'));
+async function bioSecret(r){return NB()?b64d((await NB().retrieve()).secret):prfGet(r.cid,r.salt)}
+async function startBioNative(){
+  const secret=rnd(32);
+  await NB().store({secret:b64(secret)});
+  const back=b64d((await NB().retrieve()).secret);
+  const w=await wrap(key,await prfKey(back));
+  await tx('meta','readwrite',s=>s.put({native:true,wrap:w},'bio'));
+  bioRec={native:true,wrap:w};bioOn=true;return true;
+}
+const prfKey=s=>crypto.subtle.importKey('raw',s,{name:'AES-GCM'},false,['encrypt','decrypt']);
+async function prfGet(cid,salt){
+  const r=await navigator.credentials.get({publicKey:{challenge:rnd(32),allowCredentials:[{type:'public-key',id:cid}],userVerification:'required',extensions:{prf:{eval:{first:salt}}}}});
+  const o=r.getClientExtensionResults().prf;
+  if(!o||!o.results||!o.results.first)throw new Error('noprf');
+  return o.results.first;
+}
+async function finishBio(cid,salt,secret){
+  const w=await wrap(key,await prfKey(secret));
+  await tx('meta','readwrite',s=>s.put({cid,salt,wrap:w},'bio'));
+  bioRec={cid,salt,wrap:w};bioOn=true;
+}
+async function startBio(){
+  if(NB())return startBioNative();
+  const salt=rnd(32);
+  const cred=await navigator.credentials.create({publicKey:{
+    rp:{name:'Vault'},user:{id:rnd(16),name:'vault',displayName:'Vault'},challenge:rnd(32),
+    pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+    authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'preferred'},
+    extensions:{prf:{eval:{first:salt}}}}});
+  const x=cred.getClientExtensionResults().prf;
+  if(!x||(!x.enabled&&!x.results))throw new Error('noprf');
+  const cid=new Uint8Array(cred.rawId);
+  if(x.results&&x.results.first){await finishBio(cid,salt,x.results.first);return true}
+  try{await finishBio(cid,salt,await prfGet(cid,salt));return true}
+  catch(e){if(e&&e.message==='noprf')throw e;bioPend={cid,salt};return false}
+}
+function bioLabel(){$('sbio').textContent=bioOn?'Turn off Face ID unlock':bioState===1?'Continue with Face ID':bioState===2?'Confirm with Face ID':'Enable Face ID unlock'}
+async function init(){
+  try{bioRec=bioOK()?await tx('meta','readonly',s=>s.get('bio')):null}catch(e){bioRec=null}
+  bioOn=!!bioRec;
+  setMode((await getAuth())?'unlock':'setup');
+}
+
+function checkNew(pw,pw2){
+  if(pw.length<8){return'Use at least 8 characters.'}
+  if(pw!==pw2){return'Passwords don\'t match.'}
+  return'';
+}
+async function submit(){
+  $('go').disabled=true;err('');
+  try{
+    if(mode==='setup')await doSetup();else if(mode==='forgot')await doForgot();else await doUnlock();
+  }catch(e){err('Something went wrong. Try again.')}
+  finally{$('go').disabled=false}
+}
+async function doSetup(){
+  const pw=$('pw').value,m=checkNew(pw,$('pw2').value);
+  if(m){err(m);return}
+  const dek=await newDek(),code=newCode();
+  await putAuth(await buildAuth(dek,pw,code));
+  key=dek;clearFields();showRecovery(code,enterApp);
+}
+async function doUnlock(){
+  const pw=$('pw').value;
+  if(!pw){err('Enter a password.');return}
+  if(fails>0)await sleep(Math.min(fails,6)*1000);
+  const a=await getAuth();let k;
+  if(a.v===2){
+    try{k=await unwrap(a.wrap,await kek(pw,a.salt))}catch(e){fails++;err('Wrong password.');return}
+    key=k;fails=0;clearFields();await enterApp();return;
+  }
+  try{
+    k=await crypto.subtle.importKey('raw',await rawBits(pw,a.salt),{name:'AES-GCM'},true,['encrypt','decrypt']);
+    const p=await crypto.subtle.decrypt({name:'AES-GCM',iv:a.iv},k,a.ct);
+    if(dec.decode(p)!=='vault-ok')throw 0;
+  }catch(e){fails++;err('Wrong password.');return}
+  const code=newCode();
+  await putAuth(await buildAuth(k,pw,code));
+  key=k;fails=0;clearFields();showRecovery(code,enterApp);
+}
+async function doForgot(){
+  const code=$('rc').value,pw=$('pw').value;
+  if(!norm(code)){err('Enter your recovery code.');return}
+  const m=checkNew(pw,$('pw2').value);
+  if(m){err(m);return}
+  if(fails>0)await sleep(Math.min(fails,6)*1000);
+  const a=await getAuth();
+  if(a.v!==2){err('This vault has no recovery code yet. Unlock with your password first.');return}
+  let k;
+  try{k=await unwrap(a.rwrap,await kek(norm(code),a.rsalt))}catch(e){fails++;err('That recovery code doesn\'t match.');return}
+  const nc=newCode();
+  await putAuth(await buildAuth(k,pw,nc));
+  key=k;fails=0;clearFields();showRecovery(nc,enterApp);
+}
+
+function showRecovery(code,next){
+  recCode=code;recNext=next;
+  $('code').textContent=code;$('saved').checked=false;$('rerr').textContent='';
+  $('auth').classList.add('hide');$('app').classList.add('hide');$('rec').classList.remove('hide');
+}
+async function enterApp(){
+  $('auth').classList.add('hide');$('rec').classList.add('hide');$('app').classList.remove('hide');
+  await load();resetIdle();
+}
+function lockNow(){
+  key=null;items=[];current=null;recCode='';clearUrls();closeModal();$('smodal').classList.add('hide');
+  $('list').innerHTML='';$('code').textContent='';clearFields();
+  $('app').classList.add('hide');$('rec').classList.add('hide');$('auth').classList.remove('hide');
+  setMode('unlock');clearTimeout(idle);
+}
+function resetIdle(){clearTimeout(idle);if(key)idle=setTimeout(()=>{if(busy)resetIdle();else lockNow()},5*60*1000)}
+window.addEventListener('beforeunload',e=>{if(busy){e.preventDefault();e.returnValue=''}});
+['click','keydown','touchstart','mousemove'].forEach(e=>document.addEventListener(e,resetIdle,{passive:true}));
+
+function cat(t){return t.startsWith('image/')?'photo':t.startsWith('video/')?'video':'file'}
+function fmt(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':n<1073741824?(n/1048576).toFixed(1)+' MB':(n/1073741824).toFixed(2)+' GB'}
+function clearUrls(){urls.forEach(u=>URL.revokeObjectURL(u));urls=[]}
+
+async function load(){
+  const recs=await tx('files','readonly',s=>s.getAll());
+  try{
+    const keys=await tx('chunks','readonly',s=>s.getAllKeys());
+    const live=new Set(recs.map(r=>r.fid).filter(Boolean));
+    const dead=new Set(keys.map(k=>k[0]).filter(f=>!live.has(f)));
+    for(const f of dead)await tx('chunks','readwrite',s=>s.delete(IDBKeyRange.bound([f,0],[f,Infinity])));
+  }catch(e){}
+  items=[];
+  for(const r of recs){try{const m=JSON.parse(dec.decode(await unseal(r.meta)));items.push({id:r.id,m,thumb:r.thumb})}catch(e){}}
+  items.sort((a,b)=>b.m.added-a.m.added);
+  await render();
+}
+async function render(){
+  clearUrls();$('list').innerHTML='';
+  const shown=items.filter(i=>filter==='all'||cat(i.m.type)===filter);
+  $('count').textContent=items.length+' item'+(items.length===1?'':'s');
+  if(!shown.length){const d=document.createElement('div');d.className='empty';d.textContent=items.length?'Nothing in this category.':'Your vault is empty. Import pictures, videos, or files to lock them away.';$('list').appendChild(d);return}
+  const g=document.createElement('div');g.className='grid';
+  for(const i of shown){
+    const el=document.createElement('div');el.className='item';
+    const th=document.createElement('div');th.className='th';
+    if(i.thumb){try{const b=await unseal(i.thumb);const u=URL.createObjectURL(new Blob([b],{type:'image/jpeg'}));urls.push(u);const im=document.createElement('img');im.src=u;im.alt='';th.appendChild(im)}catch(e){}}
+    if(!th.firstChild){const ext=(i.m.name.split('.').pop()||'').slice(0,4).toUpperCase();th.textContent=cat(i.m.type)==='video'?'VIDEO':(ext||'FILE')}
+    const nm=document.createElement('div');nm.className='nm';
+    const a=document.createElement('div');a.textContent=i.m.name;
+    const b=document.createElement('div');b.textContent=fmt(i.m.size);
+    nm.append(a,b);el.append(th,nm);el.onclick=()=>openItem(i);g.appendChild(el);
+  }
+  $('list').appendChild(g);
+}
+
+async function makeThumb(file){
+  try{
+    const bmp=await createImageBitmap(file);const s=Math.min(1,320/Math.max(bmp.width,bmp.height));
+    const c=document.createElement('canvas');c.width=Math.max(1,Math.round(bmp.width*s));c.height=Math.max(1,Math.round(bmp.height*s));
+    c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);bmp.close&&bmp.close();
+    const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.7));
+    return blob?await seal(await blob.arrayBuffer()):null;
+  }catch(e){return null}
+}
+async function importFiles(files){
+  const list=[...files];let n=0,done=0,skipped=0,why='';
+  busy=true;let wl=null;
+  try{wl=await navigator.wakeLock.request('screen')}catch(e){}
+  try{navigator.storage.persist().catch(()=>{})}catch(e){}
+  for(const f of list){
+    n++;
+    if(f.size>MAX){skipped++;why='over 50 GB';continue}
+    let free=Infinity;
+    try{const q=await navigator.storage.estimate();if(q.quota)free=q.quota-(q.usage||0)}catch(e){}
+    if(f.size*1.02>free){skipped++;why='not enough browser storage';continue}
+    const fid=crypto.randomUUID?crypto.randomUUID():Array.from(rnd(16),b=>b.toString(16).padStart(2,'0')).join('');
+    try{
+      const type=f.type||'application/octet-stream';
+      const total=Math.max(1,Math.ceil(f.size/CHUNK));
+      for(let c=0;c<total;c++){
+        $('status').textContent='Encrypting '+n+' of '+list.length+': '+f.name+' ('+Math.round(c/total*100)+'%)';
+        const buf=await f.slice(c*CHUNK,(c+1)*CHUNK).arrayBuffer();
+        const s=await seal(buf,key,fid+':'+c);
+        await tx('chunks','readwrite',st=>st.put({fid,i:c,iv:s.iv,ct:s.ct}));
+      }
+      const meta=await seal(enc.encode(JSON.stringify({name:f.name,type,size:f.size,added:Date.now()})));
+      const thumb=type.startsWith('image/')&&f.size<100*1024*1024?await makeThumb(f):null;
+      await tx('files','readwrite',st=>st.add({fid,chunks:total,meta,thumb}));
+      done++;
+    }catch(e){
+      skipped++;why='storage full or write failed';
+      try{await tx('chunks','readwrite',st=>st.delete(IDBKeyRange.bound([fid,0],[fid,Infinity])))}catch(_){}
+    }
+  }
+  busy=false;resetIdle();try{wl&&wl.release()}catch(e){}
+  $('status').textContent='Locked '+done+' file'+(done===1?'':'s')+(skipped?' ('+skipped+' skipped: '+why+')':'')+'.';
+  setTimeout(()=>{if($('status').textContent.startsWith('Locked'))$('status').textContent=''},4000);
+  await load();
+}
+
+function st(t){$('status').textContent=t;$('mstat').textContent=t}
+async function readChunk(rec,c){return unseal(await tx('chunks','readonly',s=>s.get([rec.fid,c])),key,rec.fid+':'+c)}
+async function readParts(rec){
+  if(rec.data)return[await unseal(rec.data)];
+  const parts=[];
+  for(let c=0;c<rec.chunks;c++)parts.push(await readChunk(rec,c));
+  return parts;
+}
+async function openItem(i){
+  try{
+    const rec=await tx('files','readonly',s=>s.get(i.id));
+    const body=$('mbody');body.innerHTML='';
+    const t=i.m.type;let el,u=null,bl=null;
+    if(i.m.size<=PREVIEW){
+      st('Decrypting…');
+      bl=new Blob(await readParts(rec),{type:t});u=URL.createObjectURL(bl);
+      if(t.startsWith('image/')){el=document.createElement('img');el.src=u}
+      else if(t.startsWith('video/')){el=document.createElement('video');el.src=u;el.controls=true}
+      else if(t.startsWith('audio/')){el=document.createElement('audio');el.src=u;el.controls=true}
+      else{el=document.createElement('div');el.className='sub';el.textContent='No preview for this file type. Use Download.'}
+    }else{el=document.createElement('div');el.className='sub';el.textContent='This file is large, so preview is off. Use Download.'}
+    current={i,rec,u,bl};$('mname').textContent=i.m.name;
+    body.appendChild(el);
+    $('modal').classList.remove('hide');st('');
+  }catch(e){st('Couldn\'t open that file.')}
+}
+async function nativeExport(i,rec){
+  const V=NB();busy=true;
+  try{
+    await V.exportBegin({name:i.m.name});
+    if(rec.data){await V.exportAppend({data:b64(new Uint8Array(await unseal(rec.data)))})}
+    else for(let c=0;c<rec.chunks;c++){st('Preparing… '+Math.round(c/rec.chunks*100)+'%');await V.exportAppend({data:b64(new Uint8Array(await readChunk(rec,c)))})}
+    await V.exportFinish();st('');
+  }catch(e){st('Couldn\'t export that file.');try{await V.exportAbort()}catch(_){}}
+  finally{busy=false;resetIdle()}
+}
+$('mdl').onclick=async()=>{
+  if(!current)return;
+  const{i,rec,u,bl}=current;
+  if(NB()){await nativeExport(i,rec);return}
+  if(u){
+    const ios=/iPhone|iPad/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    if(ios&&bl&&navigator.share){const f=new File([bl],i.m.name,{type:i.m.type});if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f]}).catch(()=>{});return}}
+    const a=document.createElement('a');a.href=u;a.download=i.m.name;document.body.appendChild(a);a.click();a.remove();return}
+  busy=true;
+  try{
+    if(window.showSaveFilePicker){
+      const h=await showSaveFilePicker({suggestedName:i.m.name});
+      const w=await h.createWritable();
+      for(let c=0;c<rec.chunks;c++){st('Decrypting and saving… '+Math.round(c/rec.chunks*100)+'%');await w.write(await readChunk(rec,c))}
+      await w.close();st('Saved.');
+    }else if(i.m.size<=2*1024*1024*1024){
+      st('Decrypting…');
+      const bu=URL.createObjectURL(new Blob(await readParts(rec),{type:i.m.type}));
+      const a=document.createElement('a');a.href=bu;a.download=i.m.name;document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(bu),60000);st('');
+    }else st('This browser can\'t save files this large. Use Chrome or Edge on a computer.');
+  }catch(e){st(e&&e.name==='AbortError'?'':'Couldn\'t export that file.')}
+  finally{busy=false;resetIdle()}
+};
+function closeModal(){
+  $('modal').classList.add('hide');$('mbody').innerHTML='';
+  if(current){URL.revokeObjectURL(current.u);current=null}
+}
+
+async function verifyCur(){
+  const pw=$('s0').value;
+  if(!pw){serr('Enter your current password.');return false}
+  const a=await getAuth();
+  try{await unwrap(a.wrap,await kek(pw,a.salt));return true}
+  catch(e){serr('Current password is wrong.');return false}
+}
+
+$('go').onclick=submit;
+['pw','pw2','rc'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')submit()}));
+$('forgot').onclick=()=>{clearFields();setMode('forgot')};
+$('back').onclick=()=>{clearFields();setMode('unlock')};
+$('lock').onclick=()=>{if(busy){$('status').textContent='Wait for the current import or export to finish.';return}lockNow()};
+$('ccopy').onclick=async()=>{try{await navigator.clipboard.writeText(recCode);$('rerr').textContent=''}catch(e){$('rerr').textContent='Couldn\'t copy. Select the code and copy it by hand.'}};
+$('cdl').onclick=()=>{
+  const b=new Blob(['Vault recovery code\n\n'+recCode+'\n\nKeep this private. Anyone with it and access to your vault browser can open your files.\n'],{type:'text/plain'});
+  const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='vault-recovery-code.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);
+};
+$('rgo').onclick=()=>{
+  if(!$('saved').checked){$('rerr').textContent='Confirm you\'ve saved the code first.';return}
+  const n=recNext;recNext=null;recCode='';$('code').textContent='';$('rec').classList.add('hide');if(n)n();
+};
+$('secbtn').onclick=()=>{
+  clearFields();serr('');bioState=0;bioPend=null;bioLabel();
+  $('bnote').textContent=NB()?'Face ID unlock keeps a key in the iPhone Keychain that only Face ID can release. If your face data changes, use your password.':bioOK()?'Face ID unlock needs iOS 18 or later in Safari. Your password and recovery code still work.':'Face ID unlock only works when the vault is opened from an https address, not from a local file.';
+  $('smodal').classList.remove('hide');
+};
+$('sclose').onclick=()=>{clearFields();bioState=0;bioPend=null;$('smodal').classList.add('hide')};
+$('sbio').onclick=async()=>{
+  serr('');
+  if(!bioOK()){serr('Face ID needs the vault opened from an https address.');return}
+  try{
+    if(bioOn){
+      if(!await verifyCur())return;
+      await tx('meta','readwrite',s=>s.delete('bio'));if(NB())try{await NB().remove()}catch(e){}bioOn=false;bioRec=null;bioState=0;serr('Face ID unlock turned off.',true);
+    }else if(bioState===0){
+      if(!await verifyCur())return;
+      bioState=1;serr('Password confirmed. Tap to continue.',true);
+    }else if(bioState===1){
+      if(await startBio()){bioState=0;serr('Face ID unlock is on.',true)}
+      else{bioState=2;serr('Tap again to finish.',true)}
+    }else{
+      await finishBio(bioPend.cid,bioPend.salt,await prfGet(bioPend.cid,bioPend.salt));
+      bioPend=null;bioState=0;serr('Face ID unlock is on.',true);
+    }
+  }catch(e){
+    bioState=0;bioPend=null;
+    serr(e&&e.message==='noprf'?'This device or browser doesn\'t support Face ID unlock keys. Update to iOS 18 or later and use Safari.':e&&(e.name==='NotAllowedError'||e.code==='CANCELLED')?'Cancelled. Start again.':NB()?'Couldn\'t set up Face ID. Make sure a passcode and Face ID are set on this iPhone.':'Couldn\'t set up Face ID.');
+  }
+  bioLabel();
+};
+$('bio').onclick=async()=>{
+  err('');
+  if(!bioRec){bioOn=false;setMode('unlock');return}
+  try{
+    key=await unwrap(bioRec.wrap,await prfKey(await bioSecret(bioRec)));
+    fails=0;clearFields();await enterApp();
+  }catch(e){key=null;err(e&&(e.name==='NotAllowedError'||e.code==='CANCELLED')?'Face ID cancelled. Use your password instead.':'Face ID unlock failed. Use your password.')}
+};
+$('schg').onclick=async()=>{
+  serr('');
+  if(!await verifyCur())return;
+  const n=$('s1').value,m=checkNew(n,$('s2').value);
+  if(m){serr(m);return}
+  const a=await getAuth();a.salt=rnd(16);a.wrap=await wrap(key,await kek(n,a.salt));await putAuth(a);
+  clearFields();serr('Password changed.',true);
+};
+$('srec').onclick=async()=>{
+  serr('');
+  if(!await verifyCur())return;
+  const code=newCode(),a=await getAuth();
+  a.rsalt=rnd(16);a.rwrap=await wrap(key,await kek(norm(code),a.rsalt));await putAuth(a);
+  clearFields();$('smodal').classList.add('hide');
+  showRecovery(code,()=>$('app').classList.remove('hide'));
+};
+document.querySelectorAll('.imp').forEach(b=>b.onclick=()=>$({image:'fimg',video:'fvid',any:'fany'}[b.dataset.k]).click());
+['fimg','fvid','fany'].forEach(id=>$(id).onchange=e=>{if(e.target.files.length)importFiles(e.target.files);e.target.value=''});
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{filter=t.dataset.f;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));render()});
+$('mclose').onclick=closeModal;
+$('mdel').onclick=async()=>{
+  if(!current)return;
+  if(!confirm('Delete this file from the vault? This can\'t be undone.'))return;
+  const id=current.i.id,rec=current.rec;closeModal();
+  await tx('files','readwrite',s=>s.delete(id));
+  if(rec&&rec.fid)await tx('chunks','readwrite',s=>s.delete(IDBKeyRange.bound([rec.fid,0],[rec.fid,Infinity])));
+  await load();
+};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+init();
+</script>
+</body>
+</html>
